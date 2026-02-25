@@ -1,0 +1,67 @@
+{
+  "id": "root",
+  "label": "My Project",
+  "type": "folder",
+  "collapsed": false,
+  "children": [
+    {
+      "id": "n1",
+      "label": "src",
+      "type": "folder",
+      "collapsed": false,
+      "children": [
+        {
+          "id": "n2",
+          "label": "index.html",
+          "type": "code",
+          "collapsed": true,
+          "children": []
+        },
+        {
+          "id": "n3",
+          "label": "style.css",
+          "type": "code",
+          "collapsed": true,
+          "children": []
+        },
+        {
+          "id": "n4",
+          "label": "app.js",
+          "type": "code",
+          "collapsed": false,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "n5",
+      "label": "assets",
+      "type": "folder",
+      "collapsed": false,
+      "children": [
+        {
+          "id": "n6",
+          "label": "logo.png",
+          "type": "img",
+          "collapsed": false,
+          "children": [
+            {
+              "id": "n24",
+              "label": "dfgsdg",
+              "type": "pdf",
+              "collapsed": false,
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n7",
+      "label": "README.md",
+      "type": "doc",
+      "collapsed": true,
+      "children": []
+    }
+  ]
+}

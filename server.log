@@ -1,0 +1,6 @@
+nohup: ignoring input
+
+> filetree-studio@1.0.0 start
+> node server.js
+
+FileTree server running at http://localhost:3001
