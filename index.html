@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileTree Studio</title>
+
+<!-- Froala Editor Free CDN -->
+<link href="https://cdn.jsdelivr.net/npm/froala-editor@latest/css/froala_editor.pkgd.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/froala-editor@latest/css/froala_style.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/froala-editor@latest/js/froala_editor.pkgd.min.js"></script>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0c0d;
+  --surface: #141416;
+  --surface2: #1c1c1f;
+  --border: #252528;
+  --border2: #2e2e33;
+  --accent: #4ade80;
+  --accent2: #22c55e;
+  --text: #e2e2e8;
+  --text-dim: #888890;
+  --text-muted: #4a4a52;
+  --folder-color: #fb923c;
+  --file-color: #60a5fa;
+  --img-color: #f472b6;
+  --video-color: #a78bfa;
+  --audio-color: #34d399;
+  --pdf-color: #f87171;
+  --zip-color: #fbbf24;
+  --code-color: #38bdf8;
+  --delete: #ef4444;
+  --node-w: 150px;
+  --node-h: 42px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* TOPBAR */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  height: 50px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 200;
+}
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  margin-right: 6px;
+}
+.hint-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.spacer { flex: 1; }
+.tb-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tb-btn.danger { color: var(--delete); border-color: var(--delete); opacity: 0.6; }
+.tb-btn.danger:hover { opacity: 1; }
+#save-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+#save-status.saved { color: var(--accent); }
+#save-status.unsaved { color: var(--zip-color); }
+
+/* MAIN */
+#main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* TREE PANEL */
+#tree-panel {
+  width: 100%;
+  flex-shrink: 0;
+  position: relative;
+  overflow: auto;
+  transition: width 0.3s ease;
+  background: var(--bg);
+}
+#main.editor-open #tree-panel {
+  width: 42%;
+  border-right: 1px solid var(--border);
+}
+#tree-canvas {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  transform-origin: 0 0;
+  transition: transform 0.1s;
+}
+svg#svg-lines {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Zoom Controls */
+#zoom-controls {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+}
+.zoom-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  width: 36px; height: 36px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.zoom-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74,222,128,0.05);
+}
+.zoom-btn:active { transform: scale(0.95); }
+#zoom-level {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  min-width: 36px;
+}
+
+/* EDITOR PANEL */
+#editor-panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  background: var(--surface);
+  overflow: hidden;
+}
+#main.editor-open #editor-panel { display: flex; }
+#editor-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 46px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface2);
+}
+#editor-file-icon { font-size: 16px; }
+#editor-file-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+#editor-file-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.close-editor-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.15s;
+}
+.close-editor-btn:hover { border-color: var(--delete); color: var(--delete); }
+#save-btn {
+  background: var(--accent2);
+  border: none;
+  color: #000;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#save-btn:hover { background: var(--accent); }
+#editor-wrap { flex: 1; overflow: auto; background: #fff; }
+#froala-editor { min-height: 100%; }
+
+/* Non-text file viewer */
+#file-viewer {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  padding: 40px;
+  background: var(--bg);
+}
+#file-viewer .fv-icon { font-size: 72px; }
+#file-viewer .fv-name { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--text); }
+#file-viewer .fv-type { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+#file-viewer img, #file-viewer video, #file-viewer audio {
+  max-width: 100%; max-height: 55vh;
+  border-radius: 8px; border: 1px solid var(--border2);
+}
+
+/* NODES */
+.node { position: absolute; width: var(--node-w); user-select: none; }
+.node-box {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 0 10px;
+  height: var(--node-h);
+  cursor: grab;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.1s;
+}
+.node-box:hover {
+  background: #202025;
+  border-color: #3a3a42;
+  box-shadow: 0 3px 16px rgba(0,0,0,0.5);
+}
+.node-box.active { border-color: var(--accent) !important; box-shadow: 0 0 0 1px rgba(74,222,128,0.25); }
+.node-box.dragging { cursor: grabbing; border-color: var(--accent); opacity: 0.92; z-index: 1000; box-shadow: 0 12px 40px rgba(0,0,0,0.7); }
+.node-type-folder .node-box { border-left: 3px solid var(--folder-color); }
+.node-type-doc .node-box    { border-left: 3px solid var(--file-color); }
+.node-type-code .node-box   { border-left: 3px solid var(--code-color); }
+.node-type-img .node-box    { border-left: 3px solid var(--img-color); }
+.node-type-video .node-box  { border-left: 3px solid var(--video-color); }
+.node-type-audio .node-box  { border-left: 3px solid var(--audio-color); }
+.node-type-pdf .node-box    { border-left: 3px solid var(--pdf-color); }
+.node-type-zip .node-box    { border-left: 3px solid var(--zip-color); }
+.node-type-other .node-box  { border-left: 3px solid var(--text-muted); }
+.node-root .node-box        { border-left: 3px solid var(--accent) !important; background: #161a18; }
+.node-icon { font-size: 13px; flex-shrink: 0; }
+.node-label {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text); outline: none; background: transparent; border: none;
+  cursor: inherit; min-width: 0;
+}
+.node-label[contenteditable="true"] {
+  cursor: text; border-bottom: 1px solid var(--accent); color: var(--accent); padding-bottom: 1px;
+}
+
+/* Actions tooltip */
+.node-actions {
+  display: flex; gap: 2px; position: absolute;
+  top: -34px; left: 50%; transform: translateX(-50%);
+  background: #0d0d0f;
+  border: 1px solid var(--border2);
+  border-radius: 4px; padding: 3px 4px;
+  z-index: 50; white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
+.node-box:hover .node-actions { opacity: 1; pointer-events: auto; }
+.ab {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 10px; padding: 3px 7px; border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); transition: background 0.1s, color 0.1s;
+}
+.ab:hover { background: var(--border2); color: var(--text); }
+.ab.danger:hover { color: var(--delete); }
+.ab.open-btn:hover { color: var(--accent); }
+
+/* Toggle dot */
+.toggle-dot {
+  position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border2);
+  cursor: pointer; font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); transition: all 0.15s; z-index: 10;
+  font-family: 'JetBrains Mono', monospace;
+}
+.toggle-dot:hover { border-color: var(--accent); color: var(--accent); }
+
+/* FILE TYPE MODAL */
+#ft-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); z-index: 9998;
+  align-items: center; justify-content: center; backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+#ft-modal.show { display: flex; pointer-events: auto; }
+#ft-box {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 28px; width: 440px; max-width: 96vw;
+  box-shadow: 0 28px 70px rgba(0,0,0,0.8);
+  pointer-events: auto;
+}
+#ft-box h2 {
+  font-size: 13px; font-family: 'JetBrains Mono', monospace;
+  color: var(--accent); margin-bottom: 4px; letter-spacing: 0.08em;
+}
+#ft-box .sub {
+  font-size: 11px; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 18px;
+}
+.ft-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 20px;
+}
+.ft-type {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 11px 6px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 6px; cursor: pointer; transition: all 0.15s;
+}
+.ft-type:hover, .ft-type.sel {
+  border-color: var(--accent); background: rgba(74,222,128,0.06);
+}
+.ft-type .ft-em { font-size: 22px; }
+.ft-type .ft-lb { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); }
+.ft-name-row { display: flex; gap: 8px; align-items: center; }
+#ft-name {
+  flex: 1; background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 9px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  outline: none; transition: border-color 0.15s;
+}
+#ft-name:focus { border-color: var(--accent); }
+#ft-create-btn {
+  background: var(--accent2); border: none; color: #000;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  font-weight: 700; padding: 9px 16px; border-radius: 4px;
+  cursor: pointer; transition: background 0.15s;
+  pointer-events: auto;
+}
+#ft-create-btn:hover { background: var(--accent); }
+#ft-create-btn:active { transform: scale(0.98); }
+#ft-cancel-btn {
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 9px 12px; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s;
+  pointer-events: auto;
+}
+#ft-cancel-btn:hover { border-color: var(--delete); color: var(--delete); }
+#ft-cancel-btn:active { transform: scale(0.98); }
+
+/* CONTEXT MENU */
+#ctx-menu {
+  position: fixed; background: var(--surface2);
+  border: 1px solid var(--border2); border-radius: 6px;
+  padding: 4px 0; z-index: 9999; min-width: 175px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.7); display: none;
+}
+#ctx-menu.show { display: block; }
+.ctx-item {
+  padding: 8px 16px; font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; color: var(--text-dim);
+  transition: background 0.1s, color 0.1s;
+  display: flex; align-items: center; gap: 9px;
+}
+.ctx-item:hover { background: var(--border); color: var(--text); }
+.ctx-item.danger:hover { color: var(--delete); }
+.ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* Froala adjustments */
+.fr-box.fr-basic .fr-element { font-family: 'Syne', sans-serif !important; min-height: 500px; padding: 24px; font-size: 15px; line-height: 1.7; }
+
+/* Search Bar */
+#search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 10px;
+  flex: 0 1 300px;
+}
+#search-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#search-input:focus {
+  border-color: var(--accent);
+}
+#search-input::placeholder {
+  color: var(--text-muted);
+}
+#search-results {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  position: absolute;
+  top: 50px;
+  left: 10px;
+  max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+}
+#search-results.show {
+  display: block;
+}
+.search-result-item {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s, color 0.1s;
+}
+.search-result-item:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.search-result-item .highlight {
+  color: var(--accent);
+  font-weight: 600;
+}
+.search-result-path {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+#search-count {
+  font-size: 9px;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">⬡ FILETREE</div>
+  <span class="hint-pill">dbl-click node to edit · hover for actions · right-click for menu</span>
+  <div id="search-container">
+    <input id="search-input" type="text" placeholder="🔍 Search files..." spellcheck="false">
+    <div id="search-results"></div>
+  </div>
+  <div class="spacer"></div>
+  <span id="save-status">● all saved</span>
+  <button class="tb-btn" onclick="expandAll()">Expand All</button>
+  <button class="tb-btn" onclick="collapseAll()">Collapse All</button>
+  <button class="tb-btn" onclick="resetLayout()">Reset Layout</button>
+  <button class="tb-btn danger" onclick="clearStorage()">Clear All</button>
+</div>
+
+<div id="main">
+  <div id="tree-panel">
+    <div id="tree-canvas">
+      <svg id="svg-lines"></svg>
+    </div>
+  </div>
+
+  <div id="editor-panel">
+    <div id="editor-header">
+      <span id="editor-file-icon">📄</span>
+      <span id="editor-file-name">untitled</span>
+      <span id="editor-file-path"></span>
+      <button id="save-btn" onclick="saveCurrentFile()">💾 Save  (Ctrl+S)</button>
+      <button class="close-editor-btn" onclick="closeEditor()">✕ Close</button>
+    </div>
+    <div id="editor-wrap">
+      <div id="froala-editor"></div>
+    </div>
+    <div id="file-viewer">
+      <div class="fv-icon" id="fv-icon"></div>
+      <div class="fv-name" id="fv-name"></div>
+      <div class="fv-type" id="fv-type"></div>
+      <img id="fv-img" style="display:none" alt="preview">
+      <video id="fv-video" controls style="display:none"></video>
+      <audio id="fv-audio" controls style="display:none"></audio>
+    </div>
+  </div>
+</div>
+
+<!-- FILE TYPE MODAL -->
+<div id="ft-modal">
+  <div id="ft-box">
+    <h2>// NEW ITEM</h2>
+    <div class="sub">Choose a type, then name your file</div>
+    <div class="ft-grid" id="ft-grid"></div>
+    <div class="ft-name-row">
+      <input id="ft-name" type="text" placeholder="filename.txt" autocomplete="off" spellcheck="false">
+      <button id="ft-cancel-btn" onclick="closeFtModal()">Cancel</button>
+      <button id="ft-create-btn" onclick="confirmCreate()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-item" id="ctx-add" onclick="ctxDo('add')">➕ Add Item Here</div>
+  <div class="ctx-item" id="ctx-open" onclick="ctxDo('open')">✏️ Open / Edit</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxDo('rename')">🏷️ Rename</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctx-delete" onclick="ctxDo('delete')">🗑 Delete</div>
+</div>
+
+<!-- ZOOM CONTROLS -->
+<div id="zoom-controls">
+  <button class="zoom-btn" onclick="zoomIn()" title="Zoom In (Ctrl +)">+</button>
+  <div id="zoom-level">100%</div>
+  <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out (Ctrl -)">−</button>
+  <button class="zoom-btn" onclick="resetZoom()" title="Reset View">⊙</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════
+   CONSTANTS & STORAGE
+══════════════════════════════════════ */
+const SK   = 'ft_tree_v3';
+const SCK  = 'ft_content_v3';
+const SPK  = 'ft_pos_v3';
+const NW=150, NH=42, HGAP=54, VGAP=88;
+
+console.log('=== FileTree Studio Loaded ===');
+
+let nc = 20;
+const nid = () => 'n'+(++nc);
+
+const FILE_TYPES = [
+  {key:'folder', icon:'📁', label:'Folder',  ext:''},
+  {key:'doc',    icon:'📝', label:'Doc',     ext:'.txt'},
+  {key:'code',   icon:'💻', label:'Code',    ext:'.js'},
+  {key:'img',    icon:'🖼️', label:'Image',   ext:'.png'},
+  {key:'video',  icon:'🎬', label:'Video',   ext:'.mp4'},
+  {key:'audio',  icon:'🎵', label:'Audio',   ext:'.mp3'},
+  {key:'pdf',    icon:'📕', label:'PDF',     ext:'.pdf'},
+  {key:'zip',    icon:'📦', label:'Archive', ext:'.zip'},
+];
+
+const ICONS = {folder:'📁',doc:'📝',code:'💻',img:'🖼️',video:'🎬',audio:'🎵',pdf:'📕',zip:'📦',other:'📎'};
+
+function typeFromName(name) {
+  if (!name.includes('.')) return 'folder';
+  const x = name.split('.').pop().toLowerCase();
+  if(['js','ts','jsx','tsx','py','php','css','html','htm','json','xml','sh','sql','rb','go','rs','cpp','c','java','kt','swift','vue','sass','scss','yaml','yml','toml','ini','env'].includes(x)) return 'code';
+  if(['png','jpg','jpeg','gif','svg','webp','ico','bmp','tiff'].includes(x)) return 'img';
+  if(['mp4','webm','mov','avi','mkv','flv'].includes(x)) return 'video';
+  if(['mp3','wav','ogg','flac','m4a','aac'].includes(x)) return 'audio';
+  if(x==='pdf') return 'pdf';
+  if(['zip','rar','7z','tar','gz','bz2'].includes(x)) return 'zip';
+  if(['txt','md','doc','docx','rtf','csv','xlsx','xls','ppt','pptx','odt','pages'].includes(x)) return 'doc';
+  return 'other';
+}
+
+const isEditable = t => ['doc','code','other'].includes(t);
+
+let tree = {id:'root',label:'My Project',type:'folder',collapsed:false,children:[
+  {id:'n1',label:'src',type:'folder',collapsed:false,children:[
+    {id:'n2',label:'index.html',type:'code',collapsed:false,children:[]},
+    {id:'n3',label:'style.css',type:'code',collapsed:false,children:[]},
+    {id:'n4',label:'app.js',type:'code',collapsed:false,children:[]},
+  ]},
+  {id:'n5',label:'assets',type:'folder',collapsed:false,children:[
+    {id:'n6',label:'logo.png',type:'img',collapsed:false,children:[]},
+  ]},
+  {id:'n7',label:'README.md',type:'doc',collapsed:false,children:[]},
+]};
+
+let fileContents = {};
+let positions = {};
+
+function loadStorage() {
+  fetch('/api/load')
+    .then(r => r.json())
+    .then(data => {
+      console.log('Loaded data from server:', data);
+      if(data.tree) tree = data.tree;
+      fileContents = data.content || {};
+      positions = data.positions || {};
+      render();
+      setTimeout(()=>{
+        const wrap=document.getElementById('tree-panel');
+        const root=document.getElementById('ne-root');
+        if(root){ wrap.scrollLeft=Math.max(0,parseInt(root.style.left)+NW/2-wrap.clientWidth/2); }
+        setSaveStatus('saved');
+      },100);
+    })
+    .catch(e => {
+      console.warn('Load error:', e);
+      console.log('Using default tree');
+      render();
+      setTimeout(()=>{
+        const wrap=document.getElementById('tree-panel');
+        const root=document.getElementById('ne-root');
+        if(root){ wrap.scrollLeft=Math.max(0,parseInt(root.style.left)+NW/2-wrap.clientWidth/2); }
+        setSaveStatus('saved');
+      },100);
+    });
+}
+
+let saveTimer;
+function debounceSave() {
+  setSaveStatus('unsaved');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistAll, 1500);
+}
+
+function persistAll() {
+  try {
+    const data = {
+      tree: tree,
+      content: fileContents,
+      positions: positions
+    };
+    
+    fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+      console.log('Server save result:', result);
+      if(result.success) setSaveStatus('saved');
+      else setSaveStatus('unsaved');
+    })
+    .catch(e => {
+      console.warn('Save error', e);
+      setSaveStatus('unsaved');
+    });
+  } catch(e){ console.warn('Storage error',e); }
+}
+
+function setSaveStatus(s) {
+  const el=document.getElementById('save-status');
+  el.textContent = s==='saved'?'● all saved':'○ unsaved changes';
+  el.className = s;
+}
+
+function clearStorage() {
+  if(!confirm('Reset everything to default?')) return;
+  fetch('/api/delete-all', { method: 'POST' })
+    .then(() => location.reload())
+    .catch(() => location.reload());
+}
+
+/* ══════════════════════════════════════
+   TREE HELPERS
+══════════════════════════════════════ */
+const find = (id, n=tree) => {
+  if(n.id===id) return n;
+  for(let c of n.children||[]){let f=find(id,c);if(f)return f;}
+  return null;
+};
+function removeFn(id, n=tree) {
+  n.children=(n.children||[]).filter(c=>c.id!==id);
+  n.children.forEach(c=>removeFn(id,c));
+}
+function getPath(id, n=tree, path=[]) {
+  const p=[...path,n.label];
+  if(n.id===id) return p;
+  for(let c of n.children||[]){const f=getPath(id,c,p);if(f)return f;}
+  return null;
+}
+
+/* ══════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════ */
+function weight(n){
+  if(n.collapsed||!n.children.length) return 1;
+  return n.children.reduce((s,c)=>s+weight(c),0);
+}
+
+function autoLayout() {
+  const res=[];
+  function place(n,x,y){
+    res.push({id:n.id,x,y});
+    if(n.collapsed||!n.children.length) return;
+    let total=n.children.reduce((s,c)=>s+weight(c),0);
+    let totalW=(total-1)*(NW+HGAP);
+    let cur=x-totalW/2;
+    for(let c of n.children){
+      const w=weight(c);
+      place(c, cur+((w-1)*(NW+HGAP))/2, y+NH+VGAP);
+      cur+=w*(NW+HGAP);
+    }
+  }
+  place(tree,0,0);
+  return res;
+}
+
+function getPosMap() {
+  const auto=autoLayout();
+  let minX=Infinity, minY=Infinity;
+  auto.forEach(({id,x,y})=>{
+    const px=positions[id]!==undefined?positions[id].x:x;
+    const py=positions[id]!==undefined?positions[id].y:y;
+    minX=Math.min(minX,px); minY=Math.min(minY,py);
+  });
+  const offX=Math.max(110,-minX+110), offY=Math.max(70,-minY+70);
+  const map={};
+  auto.forEach(({id,x,y})=>{
+    map[id] = positions[id]!==undefined
+      ? {x:positions[id].x, y:positions[id].y}
+      : {x:x+offX, y:y+offY};
+  });
+  return map;
+}
+
+/* ══════════════════════════════════════
+   RENDER
+══════════════════════════════════════ */
+let activeId=null;
+let froalaInst=null, froalaReady=false;
+
+function render() {
+  const canvas=document.getElementById('tree-canvas');
+  const svg=document.getElementById('svg-lines');
+  canvas.querySelectorAll('.node').forEach(n=>n.remove());
+  svg.innerHTML='';
+
+  const pm=getPosMap();
+  let maxX=300, maxY=200;
+  Object.values(pm).forEach(({x,y})=>{ maxX=Math.max(maxX,x+NW+120); maxY=Math.max(maxY,y+NH+120); });
+
+  canvas.style.width=maxX+'px'; canvas.style.height=maxY+'px';
+  svg.style.width=maxX+'px'; svg.style.height=maxY+'px';
+  svg.setAttribute('viewBox',`0 0 ${maxX} ${maxY}`);
+
+  // Lines
+  function drawLines(n) {
+    if(!pm[n.id]) return;
+    const {x:px,y:py}=pm[n.id];
+    if(!n.collapsed)(n.children||[]).forEach(c=>{
+      if(!pm[c.id]) return;
+      const {x:cx,y:cy}=pm[c.id];
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const x1=px+NW/2,y1=py+NH,x2=cx+NW/2,y2=cy,my=(y1+y2)/2;
+      path.setAttribute('d',`M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`);
+      path.setAttribute('stroke','#252528');
+      path.setAttribute('stroke-width','1.5');
+      path.setAttribute('fill','none');
+      svg.appendChild(path);
+      drawLines(c);
+    });
+  }
+  drawLines(tree);
+
+  // Nodes
+  function drawNode(n) {
+    if(!pm[n.id]) return;
+    const {x,y}=pm[n.id];
+    const isActive = n.id===activeId;
+    const canOpen = n.type!=='folder';
+    const canEdit = canOpen && isEditable(n.type);
+
+    const el=document.createElement('div');
+    el.className=`node node-type-${n.type}${n.id==='root'?' node-root':''}`;
+    el.id=`ne-${n.id}`;
+    el.style.cssText=`left:${x}px;top:${y}px`;
+
+    el.innerHTML=`
+      <div class="node-box${isActive?' active':''}" data-id="${n.id}">
+        <div class="node-actions">
+          <button class="ab" onclick="openAddModal('${n.id}');event.stopPropagation()">+&nbsp;Add</button>
+          ${canOpen?`<button class="ab open-btn" onclick="openFile('${n.id}');event.stopPropagation()">Open</button>`:''}
+          ${n.id!=='root'?`<button class="ab danger" onclick="deleteNode('${n.id}');event.stopPropagation()">✕</button>`:''}
+        </div>
+        <span class="node-icon">${ICONS[n.type]||'📎'}</span>
+        <span class="node-label" data-id="${n.id}" title="${escH(n.label)}">${escH(n.label)}</span>
+      </div>
+      ${n.children&&n.children.length?`<div class="toggle-dot" onclick="toggleN('${n.id}')">${n.collapsed?'+':'−'}</div>`:''}
+    `;
+    canvas.appendChild(el);
+
+    setupDrag(el,n.id);
+    setupLabelDbl(el.querySelector('.node-label'),n.id);
+    // dblclick on box = open file
+    el.querySelector('.node-box').addEventListener('dblclick',e=>{
+      if(e.target.contentEditable==='true'||e.target.closest('.node-actions')) return;
+      const nd=find(n.id);
+      if(nd&&nd.type!=='folder') openFile(n.id);
+      else if(nd&&nd.type==='folder') toggleN(n.id);
+    });
+    el.addEventListener('contextmenu',e=>{ e.preventDefault(); showCtx(e.clientX,e.clientY,n.id); });
+
+    if(!n.collapsed)(n.children||[]).forEach(drawNode);
+  }
+  drawNode(tree);
+}
+
+const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function renderLinesOnly() {
+  const svg=document.getElementById('svg-lines');
+  svg.innerHTML='';
+  const pm=getPosMap();
+  function dl(n){
+    if(!pm[n.id]) return;
+    const {x:px,y:py}=pm[n.id];
+    if(!n.collapsed)(n.children||[]).forEach(c=>{
+      if(!pm[c.id]) return;
+      const {x:cx,y:cy}=pm[c.id];
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const x1=px+NW/2,y1=py+NH,x2=cx+NW/2,y2=cy,my=(y1+y2)/2;
+      path.setAttribute('d',`M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`);
+      path.setAttribute('stroke','#252528');
+      path.setAttribute('stroke-width','1.5');
+      path.setAttribute('fill','none');
+      svg.appendChild(path);
+      dl(c);
+    });
+  }
+  dl(tree);
+}
+
+/* ══════════════════════════════════════
+   DRAG
+══════════════════════════════════════ */
+function setupDrag(el,id){
+  const box=el.querySelector('.node-box');
+  let drag=false,sx,sy,ex,ey;
+  box.addEventListener('mousedown',e=>{
+    if(e.target.closest('.node-actions')||e.target.closest('.ab')||e.target.contentEditable==='true'||e.button!==0) return;
+    e.preventDefault();
+    drag=true; sx=e.clientX; sy=e.clientY;
+    ex=parseInt(el.style.left); ey=parseInt(el.style.top);
+    box.classList.add('dragging'); el.style.zIndex=999;
+    const mv=e=>{
+      if(!drag) return;
+      const nx=ex+(e.clientX-sx), ny=ey+(e.clientY-sy);
+      el.style.left=nx+'px'; el.style.top=ny+'px';
+      positions[id]={x:nx,y:ny};
+      renderLinesOnly();
+    };
+    const up=()=>{
+      drag=false; box.classList.remove('dragging'); el.style.zIndex='';
+      document.removeEventListener('mousemove',mv);
+      document.removeEventListener('mouseup',up);
+      debounceSave();
+    };
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
+}
+
+function setupLabelDbl(el,id){
+  // Double-click rename disabled
+  // el.addEventListener('dblclick',e=>{ e.stopPropagation(); startEdit(el,id); });
+  el.addEventListener('click',e=>e.stopPropagation());
+}
+
+function startEdit(el,id){
+  el.contentEditable='true'; el.focus();
+  const r=document.createRange(); r.selectNodeContents(el);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  const finish=()=>{
+    el.contentEditable='false';
+    const n=find(id); const nl=el.textContent.trim();
+    if(n&&nl){ n.label=nl; if(n.type!=='folder') n.type=typeFromName(nl); debounceSave(); render(); }
+  };
+  el.addEventListener('blur',finish,{once:true});
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();el.blur();}
+    if(e.key==='Escape'){el.textContent=find(id)?.label||'';el.blur();}
+  });
+}
+
+function toggleN(id){ const n=find(id); if(n){n.collapsed=!n.collapsed; debounceSave(); render();} }
+function deleteNode(id){
+  if(id==='root') return;
+  if(!confirm('Delete this item and all children?')) return;
+  function clr(n){delete fileContents[n.id];delete positions[n.id];(n.children||[]).forEach(clr);}
+  const n=find(id); if(n)clr(n);
+  removeFn(id);
+  if(activeId===id) closeEditor();
+  debounceSave(); render();
+}
+function expandAll(){ function ex(n){n.collapsed=false;(n.children||[]).forEach(ex);}ex(tree); debounceSave(); render(); }
+function collapseAll(){ function co(n){if(n.id!=='root')n.collapsed=true;(n.children||[]).forEach(co);}co(tree); debounceSave(); render(); }
+function resetLayout(){ positions={}; debounceSave(); render(); }
+
+/* ══════════════════════════════════════
+   FILE TYPE MODAL
+══════════════════════════════════════ */
+let modalParent=null, modalType='doc';
+
+function openAddModal(pid){
+  console.log('=== openAddModal called with pid:', pid);
+  modalParent=pid; modalType='doc';
+  const grid=document.getElementById('ft-grid'); 
+  if(!grid) { console.log('Grid element not found'); return; }
+  grid.innerHTML='';
+  FILE_TYPES.forEach(ft=>{
+    const d=document.createElement('div');
+    d.className='ft-type'+(ft.key===modalType?' sel':'');
+    d.dataset.key=ft.key;
+    d.innerHTML=`<span class="ft-em">${ft.icon}</span><span class="ft-lb">${ft.label}</span>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.ft-type').forEach(x=>x.classList.remove('sel'));
+      d.classList.add('sel'); modalType=ft.key;
+      const ni=document.getElementById('ft-name');
+      const curExt=FILE_TYPES.find(f=>f.ext&&ni.value.endsWith(f.ext));
+      if(!ni.value||curExt) ni.value=ft.key==='folder'?'new-folder':'new-file'+ft.ext;
+    };
+    grid.appendChild(d);
+  });
+  document.getElementById('ft-name').value='new-file.txt';
+  const modal=document.getElementById('ft-modal');
+  if(!modal) { console.log('Modal element not found'); return; }
+  console.log('=== Modal opening, current classes:', modal.className);
+  modal.classList.add('show');
+  console.log('=== After add show, classes:', modal.className);
+  setTimeout(()=>document.getElementById('ft-name').select(),80);
+}
+
+function closeFtModal(){ document.getElementById('ft-modal').classList.remove('show'); modalParent=null; }
+
+document.getElementById('ft-name').addEventListener('keydown',e=>{
+  if(e.key==='Enter') { e.preventDefault(); confirmCreate(); }
+  if(e.key==='Escape') { e.preventDefault(); closeFtModal(); }
+});
+
+// Use event delegation for button clicks
+document.addEventListener('click', function(e) {
+  if(e.target.id === 'ft-create-btn') {
+    console.log('=== ft-create-btn clicked');
+    e.preventDefault();
+    e.stopPropagation();
+    confirmCreate();
+    return false;
+  }
+  if(e.target.id === 'ft-cancel-btn') {
+    console.log('=== ft-cancel-btn clicked');
+    e.preventDefault();
+    e.stopPropagation();
+    closeFtModal();
+    return false;
+  }
+}, true);
+
+function confirmCreate(){
+  const name=document.getElementById('ft-name').value.trim();
+  if(!name) { console.log('No name provided'); return; }
+  let type=modalType;
+  if(type!=='folder') type=typeFromName(name)!=='folder'?typeFromName(name):modalType;
+  const parent=find(modalParent||'root');
+  if(!parent) { console.log('Parent not found', modalParent); return; }
+  if(!parent.children) parent.children = [];
+  const nn={id:nid(),label:name,type,collapsed:false,children:[]};
+  console.log('Creating node:', nn, 'in parent:', parent.label);
+  parent.children.push(nn);
+  parent.collapsed=false;
+  closeFtModal();
+  debounceSave(); render();
+  
+  // For non-editable files (img, video, audio, pdf, zip), show upload interface
+  if(!isEditable(type) && type !== 'folder') {
+    setTimeout(()=>openFileUpload(nn.id, type), 120);
+  }
+  // For editable files, auto-open in editor
+  else if(isEditable(type)) {
+    setTimeout(()=>openFile(nn.id), 120);
+  }
+}
+
+function openFileUpload(id, type){
+  activeId=id;
+  document.getElementById('main').classList.add('editor-open');
+  const n=find(id);
+  document.getElementById('editor-file-icon').textContent=ICONS[type]||'📎';
+  document.getElementById('editor-file-name').textContent=n.label;
+  const path=getPath(id);
+  document.getElementById('editor-file-path').textContent=path?'/ '+path.slice(0,-1).join(' / '):'';
+
+  const ew=document.getElementById('editor-wrap');
+  const fv=document.getElementById('file-viewer');
+  
+  ew.style.display='none';
+  fv.style.display='flex';
+  
+  fv.innerHTML=`
+    <div style="text-align:center; width:100%; max-width:600px;">
+      <div class="fv-icon" id="fv-icon">${ICONS[type]||'📎'}</div>
+      <div class="fv-name">${n.label}</div>
+      <div class="fv-type">Upload a ${type.toUpperCase()} file</div>
+      <div style="margin-top:30px; padding:40px; border:2px dashed var(--border2); border-radius:8px; background:rgba(74,222,128,0.05); cursor:pointer;" id="drop-zone">
+        <div style="font-size:14px; color:var(--text);">📁 Drop file here or click to upload</div>
+        <input type="file" id="file-input" style="display:none;">
+      </div>
+    </div>
+  `;
+  
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.background = 'rgba(74,222,128,0.15)';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.background = 'rgba(74,222,128,0.05)';
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.background = 'rgba(74,222,128,0.05)';
+    if(e.dataTransfer.files.length) {
+      uploadFile(id, e.dataTransfer.files[0]);
+    }
+  });
+  
+  fileInput.addEventListener('change', (e) => {
+    if(e.target.files.length) {
+      uploadFile(id, e.target.files[0]);
+    }
+  });
+}
+
+function uploadFile(id, file){
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('nodeId', id);
+  
+  fetch('/api/upload', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(result => {
+    if(result.success) {
+      const n = find(id);
+      fileContents[id] = result.path;
+      debounceSave();
+      // Display the uploaded file
+      const type = n.type;
+      const fv = document.getElementById('file-viewer');
+      if(type === 'img') {
+        fv.innerHTML = `
+          <div class="fv-icon">${ICONS[type]}</div>
+          <div class="fv-name">${n.label}</div>
+          <img src="${result.path}" alt="${n.label}" style="max-width:100%; max-height:55vh; border-radius:8px; border:1px solid var(--border2);">
+        `;
+      } else if(type === 'video') {
+        fv.innerHTML = `
+          <div class="fv-icon">${ICONS[type]}</div>
+          <div class="fv-name">${n.label}</div>
+          <video controls style="max-width:100%; max-height:55vh; border-radius:8px; border:1px solid var(--border2);">
+            <source src="${result.path}">
+          </video>
+        `;
+      } else if(type === 'audio') {
+        fv.innerHTML = `
+          <div class="fv-icon">${ICONS[type]}</div>
+          <div class="fv-name">${n.label}</div>
+          <audio controls style="width:100%; max-width:400px;">
+            <source src="${result.path}">
+          </audio>
+        `;
+      } else if(type === 'pdf') {
+        fv.innerHTML = `
+          <div class="fv-icon">${ICONS[type]}</div>
+          <div class="fv-name">${n.label}</div>
+          <iframe src="${result.path}" style="width:100%; height:600px; border:1px solid var(--border2); border-radius:8px;"></iframe>
+        `;
+      }
+    } else {
+      alert('Upload failed: ' + result.message);
+    }
+  })
+  .catch(e => {
+    console.error('Upload error:', e);
+    alert('Upload failed');
+  });
+}
+
+/* ══════════════════════════════════════
+   CONTEXT MENU
+══════════════════════════════════════ */
+let ctxId=null;
+function showCtx(x,y,id){
+  console.log('=== showCtx called with id:', id, 'at position:', x, y);
+  ctxId=id;
+  const m=document.getElementById('ctx-menu');
+  m.style.left=x+'px'; m.style.top=y+'px'; m.classList.add('show');
+  console.log('=== Context menu shown, ctxId is now:', ctxId);
+  const n=find(id);
+  document.getElementById('ctx-open').style.display=(n&&n.type!=='folder')?'':'none';
+  document.getElementById('ctx-delete').style.display=id==='root'?'none':'';
+}
+function hideCtx(){ document.getElementById('ctx-menu').classList.remove('show'); ctxId=null; }
+document.addEventListener('click',hideCtx);
+function ctxDo(a){
+  console.log('=== ctxDo called with action:', a, 'ctxId:', ctxId);
+  if(!ctxId) { console.log('No ctxId set'); return; }
+  const id = ctxId;
+  hideCtx();
+  if(a==='add') { console.log('Calling openAddModal with id:', id); openAddModal(id); }
+  else if(a==='open') openFile(id);
+  else if(a==='rename') setTimeout(()=>{ const el=document.querySelector(`.node-label[data-id="${id}"]`); if(el)startEdit(el,id); },50);
+  else if(a==='delete') deleteNode(id);
+}
+
+/* ══════════════════════════════════════
+   FROALA + FILE OPEN
+══════════════════════════════════════ */
+function initFroala(){
+  if(froalaReady) return;
+  froalaInst=new FroalaEditor('#froala-editor',{
+    toolbarSticky:true,
+    heightMin:500,
+    placeholderText:'Start writing here...',
+    toolbarButtons:{
+      moreText:{buttons:['bold','italic','underline','strikeThrough','subscript','superscript','fontFamily','fontSize','textColor','backgroundColor','clearFormatting'],buttonsVisible:6},
+      moreParagraph:{buttons:['alignLeft','alignCenter','alignRight','alignJustify','formatOL','formatUL','paragraphFormat','lineHeight','outdent','indent','quote'],buttonsVisible:5},
+      moreRich:{buttons:['insertLink','insertImage','insertTable','emoticons','specialCharacters','insertHR'],buttonsVisible:3},
+      moreMisc:{buttons:['undo','redo','fullscreen','print','html'],buttonsVisible:3}
+    },
+    events:{
+      contentChanged:()=>{ if(activeId&&froalaReady){ fileContents[activeId]=froalaInst.html.get(); debounceSave(); } }
+    }
+  });
+  froalaReady=true;
+}
+
+function openFile(id){
+  const n=find(id);
+  if(!n||n.type==='folder') return;
+  activeId=id;
+  document.getElementById('main').classList.add('editor-open');
+  document.getElementById('editor-file-icon').textContent=ICONS[n.type]||'📎';
+  document.getElementById('editor-file-name').textContent=n.label;
+  const path=getPath(id);
+  document.getElementById('editor-file-path').textContent=path?'/ '+path.slice(0,-1).join(' / '):'';
+
+  const ew=document.getElementById('editor-wrap');
+  const fv=document.getElementById('file-viewer');
+
+  if(isEditable(n.type)){
+    ew.style.display='block'; fv.style.display='none';
+    initFroala();
+    setTimeout(()=>{ froalaInst.html.set(fileContents[id]||''); },150);
+  } else {
+    ew.style.display='none'; fv.style.display='flex';
+    document.getElementById('fv-icon').textContent=ICONS[n.type]||'📎';
+    document.getElementById('fv-name').textContent=n.label;
+    document.getElementById('fv-type').textContent=`Type: ${n.type.toUpperCase()} file — no text editor available`;
+    ['fv-img','fv-video','fv-audio'].forEach(i=>document.getElementById(i).style.display='none');
+    const stored=fileContents[id];
+    if(n.type==='img'&&stored){ const img=document.getElementById('fv-img'); img.src=stored; img.style.display='block'; }
+    else if(n.type==='video'&&stored){ const v=document.getElementById('fv-video'); v.src=stored; v.style.display='block'; }
+    else if(n.type==='audio'&&stored){ const a=document.getElementById('fv-audio'); a.src=stored; a.style.display='block'; }
+  }
+  render();
+}
+
+function saveCurrentFile(){
+  if(!activeId) return;
+  const n=find(activeId);
+  if(n&&isEditable(n.type)&&froalaReady) fileContents[activeId]=froalaInst.html.get();
+  persistAll();
+}
+
+function closeEditor(){
+  saveCurrentFile();
+  activeId=null;
+  document.getElementById('main').classList.remove('editor-open');
+  render();
+}
+
+/* ══════════════════════════════════════
+   KEYBOARD
+══════════════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){ e.preventDefault(); saveCurrentFile(); }
+  if(e.key==='Escape'&&document.getElementById('ft-modal').classList.contains('show')) closeFtModal();
+});
+
+/* ══════════════════════════════════════
+   BOOT
+══════════════════════════════════════ */
+loadStorage();
+render();
+setTimeout(()=>{
+  const wrap=document.getElementById('tree-panel');
+  const root=document.getElementById('ne-root');
+  if(root){ wrap.scrollLeft=Math.max(0,parseInt(root.style.left)+NW/2-wrap.clientWidth/2); }
+  setSaveStatus('saved');
+},100);
+
+// Diagnostic check
+console.log('=== Startup diagnostics ===');
+console.log('openAddModal:', typeof openAddModal);
+console.log('confirmCreate:', typeof confirmCreate);
+console.log('closeFtModal:', typeof closeFtModal);
+console.log('ctxDo:', typeof ctxDo);
+console.log('ft-modal element:', document.getElementById('ft-modal') ? 'FOUND' : 'MISSING');
+console.log('ft-create-btn element:', document.getElementById('ft-create-btn') ? 'FOUND' : 'MISSING');
+console.log('ft-cancel-btn element:', document.getElementById('ft-cancel-btn') ? 'FOUND' : 'MISSING');
+console.log('ctx-menu element:', document.getElementById('ctx-menu') ? 'FOUND' : 'MISSING');
+
+/* ══════════════════════════════════════
+   SEARCH FUNCTIONALITY
+══════════════════════════════════════ */
+let searchResults = [];
+
+function searchTree(query, node = tree, path = []) {
+  const results = [];
+  
+  if (!query || query.length === 0) return results;
+  
+  const q = query.toLowerCase();
+  const nodePath = [...path, node.label];
+  
+  // Check if current node matches
+  if (node.label.toLowerCase().includes(q)) {
+    results.push({
+      id: node.id,
+      label: node.label,
+      type: node.type,
+      path: nodePath
+    });
+  }
+  
+  // Recursively search children
+  if (node.children) {
+    for (let child of node.children) {
+      results.push(...searchTree(query, child, nodePath));
+    }
+  }
+  
+  return results;
+}
+
+function displaySearchResults(results) {
+  const container = document.getElementById('search-results');
+  
+  if (results.length === 0) {
+    container.innerHTML = '<div id="search-count">No results found</div>';
+    container.classList.add('show');
+    return;
+  }
+  
+  let html = `<div id="search-count">Found ${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
+  
+  results.forEach((result, idx) => {
+    const pathStr = result.path.slice(1, -1).join(' / ') || '/';
+    const icon = ICONS[result.type] || '📎';
+    html += `
+      <div class="search-result-item" onclick="selectSearchResult('${result.id}')">
+        <div>${icon} <span class="highlight">${escH(result.label)}</span></div>
+        <div class="search-result-path">${escH(pathStr)}</div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+  container.classList.add('show');
+}
+
+function selectSearchResult(id) {
+  // Find and highlight the node
+  const node = find(id);
+  if (!node) return;
+  
+  // Expand all parents
+  function expandParents(targetId, n = tree) {
+    if (n.id === targetId) return true;
+    
+    for (let child of (n.children || [])) {
+      if (expandParents(targetId, child)) {
+        n.collapsed = false;
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  expandParents(id);
+  
+  // Clear search
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').classList.remove('show');
+  
+  // Re-render to show expanded tree
+  render();
+  
+  // Scroll to node
+  setTimeout(() => {
+    const nodeEl = document.getElementById(`ne-${id}`);
+    if (nodeEl) {
+      nodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nodeEl.querySelector('.node-box').style.borderColor = 'var(--accent)';
+      setTimeout(() => {
+        nodeEl.querySelector('.node-box').style.borderColor = '';
+      }, 2000);
+    }
+  }, 100);
+}
+
+// Search input handler
+document.getElementById('search-input').addEventListener('input', function(e) {
+  const query = e.target.value.trim();
+  
+  if (query.length === 0) {
+    document.getElementById('search-results').classList.remove('show');
+    return;
+  }
+  
+  if (query.length < 2) {
+    return; // Require at least 2 characters
+  }
+  
+  searchResults = searchTree(query);
+  displaySearchResults(searchResults);
+});
+
+// Close search results when clicking elsewhere
+document.addEventListener('click', function(e) {
+  const searchContainer = document.getElementById('search-container');
+  if (!searchContainer.contains(e.target)) {
+    document.getElementById('search-results').classList.remove('show');
+  }
+});
+
+// Keyboard navigation in search results
+document.getElementById('search-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('search-results').classList.remove('show');
+    this.value = '';
+  }
+});
+
+/* ══════════════════════════════════════
+   ZOOM & PAN CONTROLS
+══════════════════════════════════════ */
+let zoomLevel = 1;
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.1;
+
+function updateZoomDisplay() {
+  document.getElementById('zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+function applyZoom() {
+  const canvas = document.getElementById('tree-canvas');
+  canvas.style.transform = `scale(${zoomLevel})`;
+}
+
+function zoomIn() {
+  if(zoomLevel < MAX_ZOOM) {
+    zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_STEP);
+    applyZoom();
+    updateZoomDisplay();
+  }
+}
+
+function zoomOut() {
+  if(zoomLevel > MIN_ZOOM) {
+    zoomLevel = Math.max(MIN_ZOOM, zoomLevel - ZOOM_STEP);
+    applyZoom();
+    updateZoomDisplay();
+  }
+}
+
+function resetZoom() {
+  zoomLevel = 1;
+  applyZoom();
+  updateZoomDisplay();
+  // Scroll to root
+  const wrap = document.getElementById('tree-panel');
+  const root = document.getElementById('ne-root');
+  if(root && wrap) {
+    wrap.scrollLeft = Math.max(0, parseInt(root.style.left) * zoomLevel + (NW * zoomLevel) / 2 - wrap.clientWidth / 2);
+    wrap.scrollTop = Math.max(0, parseInt(root.style.top) * zoomLevel - 50);
+  }
+}
+
+// Keyboard shortcuts for zoom
+document.addEventListener('keydown', function(e) {
+  if(e.ctrlKey || e.metaKey) {
+    if(e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      zoomIn();
+    } else if(e.key === '-') {
+      e.preventDefault();
+      zoomOut();
+    } else if(e.key === '0') {
+      e.preventDefault();
+      resetZoom();
+    }
+  }
+});
+
+// Mouse wheel zoom
+document.getElementById('tree-panel').addEventListener('wheel', function(e) {
+  if(e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    if(e.deltaY < 0) {
+      zoomIn();
+    } else {
+      zoomOut();
+    }
+  }
+}, { passive: false });
+
+// Pan with middle mouse button
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panStartScrollX = 0;
+let panStartScrollY = 0;
+
+document.getElementById('tree-panel').addEventListener('mousedown', function(e) {
+  if(e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartScrollX = this.scrollLeft;
+    panStartScrollY = this.scrollTop;
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('mousemove', function(e) {
+  if(isPanning) {
+    const panel = document.getElementById('tree-panel');
+    const deltaX = (e.clientX - panStartX);
+    const deltaY = (e.clientY - panStartY);
+    panel.scrollLeft = panStartScrollX - deltaX;
+    panel.scrollTop = panStartScrollY - deltaY;
+  }
+});
+
+document.addEventListener('mouseup', function() {
+  isPanning = false;
+});
+
+</script>
+</body>
+</html>
