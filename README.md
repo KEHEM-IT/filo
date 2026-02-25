@@ -1,4 +1,4 @@
-# FileTree Studio
+# Filo Studio
 
 A visual file tree editor with drag-and-drop interface and file upload support.
 
