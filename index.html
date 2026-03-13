@@ -429,6 +429,7 @@ svg#svg-lines {
   gap: 8px;
   margin: 0 10px;
   flex: 0 1 300px;
+  position: relative;
 }
 #search-input {
   flex: 1;
@@ -453,9 +454,10 @@ svg#svg-lines {
   border: 1px solid var(--border2);
   border-radius: 4px;
   position: absolute;
-  top: 50px;
-  left: 10px;
-  max-width: 300px;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-width: none;
   max-height: 400px;
   overflow-y: auto;
   display: none;
