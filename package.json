@@ -1,7 +1,7 @@
 {
-  "name": "filetree-studio",
+  "name": "Filo-studio",
   "version": "1.0.0",
-  "description": "FileTree Studio - Visual file tree editor",
+  "description": "Filo Studio - Visual file tree editor",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
