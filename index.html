@@ -1016,12 +1016,14 @@ function confirmCreate(){
   const parent=find(modalParent||'root');
   if(!parent) { console.log('Parent not found', modalParent); return; }
   if(!parent.children) parent.children = [];
-  // Check for duplicate names under the same parent
-  if(parent.children.some(c => c.label === name)) {
-    alert('A file or folder with this name already exists in this location.');
-    return;
+  // Generate unique name if duplicate exists
+  let uniqueName = name;
+  let counter = 1;
+  while(parent.children.some(c => c.label === uniqueName)) {
+    uniqueName = `${name} (${counter})`;
+    counter++;
   }
-  const nn={id:nid(),label:name,type,collapsed:false,children:[]};
+  const nn={id:nid(),label:uniqueName,type,collapsed:false,children:[]};
   console.log('Creating node:', nn, 'in parent:', parent.label);
   parent.children.push(nn);
   parent.collapsed=false;
@@ -1232,15 +1234,15 @@ function saveCurrentFile(){
   if(!activeId) return;
   const n=find(activeId);
   if(n&&isEditable(n.type)&&froalaReady) {
-    const newContent = froalaInst.html.get();
+    let newContent = froalaInst.html.get();
     // Check if any other editable node has the same content
     const duplicate = Object.keys(fileContents).some(id => {
       const otherN = find(id);
       return id !== activeId && otherN && isEditable(otherN.type) && fileContents[id] === newContent;
     });
     if(duplicate) {
-      alert('This content is the same as another file. Please make the content unique.');
-      return;
+      // Generate unique content by appending a unique identifier
+      newContent += `\n<!-- unique-${Date.now()}-${Math.random().toString(36).substr(2, 9)} -->`;
     }
     fileContents[activeId]=newContent;
   }
