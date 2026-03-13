@@ -2,6 +2,9 @@ const { app: electronApp, BrowserWindow, Menu } = require('electron');
 const expressApp = require('./server');
 const path = require('path');
 
+// Set userData to a 'data' folder in the same directory as the exe
+electronApp.setPath('userData', path.join(path.dirname(process.execPath), 'data'));
+
 // Hide the menu bar completely
 Menu.setApplicationMenu(null);
 
