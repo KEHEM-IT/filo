@@ -1016,6 +1016,11 @@ function confirmCreate(){
   const parent=find(modalParent||'root');
   if(!parent) { console.log('Parent not found', modalParent); return; }
   if(!parent.children) parent.children = [];
+  // Check for duplicate names under the same parent
+  if(parent.children.some(c => c.label === name)) {
+    alert('A file or folder with this name already exists in this location.');
+    return;
+  }
   const nn={id:nid(),label:name,type,collapsed:false,children:[]};
   console.log('Creating node:', nn, 'in parent:', parent.label);
   parent.children.push(nn);
@@ -1226,7 +1231,19 @@ function openFile(id){
 function saveCurrentFile(){
   if(!activeId) return;
   const n=find(activeId);
-  if(n&&isEditable(n.type)&&froalaReady) fileContents[activeId]=froalaInst.html.get();
+  if(n&&isEditable(n.type)&&froalaReady) {
+    const newContent = froalaInst.html.get();
+    // Check if any other editable node has the same content
+    const duplicate = Object.keys(fileContents).some(id => {
+      const otherN = find(id);
+      return id !== activeId && otherN && isEditable(otherN.type) && fileContents[id] === newContent;
+    });
+    if(duplicate) {
+      alert('This content is the same as another file. Please make the content unique.');
+      return;
+    }
+    fileContents[activeId]=newContent;
+  }
   persistAll();
 }
 
