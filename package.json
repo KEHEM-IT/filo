@@ -6,7 +6,14 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "server": "node server.js"
+    "server": "node server.js",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.kehem.filo",
+    "win": {
+      "target": "nsis"
+    }
   },
   "keywords": [
     "filetree",
